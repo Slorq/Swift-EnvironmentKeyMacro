@@ -5,23 +5,36 @@ import SwiftSyntaxMacrosTestSupport
 import XCTest
 
 // Macro implementations build for the host, so the corresponding module is not available when cross-compiling. Cross-compiled tests may still make use of the macro itself in end-to-end tests.
-#if canImport(EnvironmentKeyMacroMacros)
-import EnvironmentKeyMacroMacros
+#if canImport(EnvironmentKeyMacros)
+import EnvironmentKeyMacros
 
 let testMacros: [String: Macro.Type] = [
-    "stringify": StringifyMacro.self,
+    "EnvironmentKey": EnvironmentKeyMacro.self,
+    "EnvironmentKeys": EnvironmentKeysMacro.self,
 ]
 #endif
 
 final class EnvironmentKeyMacroTests: XCTestCase {
-    func testMacro() throws {
-        #if canImport(EnvironmentKeyMacroMacros)
+    func testEnvironmentKeyMacroWithString() throws {
+        #if canImport(EnvironmentKeyMacros)
         assertMacroExpansion(
             """
-            #stringify(a + b)
+            @EnvironmentKey
+            var string = "defaultValue"
             """,
             expandedSource: """
-            (a + b, "a + b")
+            var string = "defaultValue" {
+                get {
+                    self [EnvironmentKeyString.self]
+                }
+                set {
+                    self [EnvironmentKeyString.self] = newValue
+                }
+            }
+
+            private struct EnvironmentKeyString: EnvironmentKey {
+                static let defaultValue = "defaultValue"
+            }
             """,
             macros: testMacros
         )
@@ -30,14 +43,71 @@ final class EnvironmentKeyMacroTests: XCTestCase {
         #endif
     }
 
-    func testMacroWithStringLiteral() throws {
-        #if canImport(EnvironmentKeyMacroMacros)
+    func testEnvironmentKeyMacroWithOptional() throws {
+        #if canImport(EnvironmentKeyMacros)
         assertMacroExpansion(
             #"""
-            #stringify("Hello, \(name)")
+            @EnvironmentKey
+            var optional: Bool?
             """#,
             expandedSource: #"""
-            ("Hello, \(name)", #""Hello, \(name)""#)
+            var optional: Bool? {
+                get {
+                    self [EnvironmentKeyOptional.self]
+                }
+                set {
+                    self [EnvironmentKeyOptional.self] = newValue
+                }
+            }
+
+            private struct EnvironmentKeyOptional: EnvironmentKey {
+                static let defaultValue: Bool? = nil
+            }
+            """#,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testEnvironmentKeysMacro() throws {
+        #if canImport(EnvironmentKeyMacros)
+        assertMacroExpansion(
+            #"""
+            @EnvironmentKeys
+            extension EnvironmentValues {
+                var string = "defaultValue"
+                var optional: Bool?
+            }
+            """#,
+            expandedSource: #"""
+            extension EnvironmentValues {
+                var string = "defaultValue" {
+                    get {
+                        self [EnvironmentKeyString.self]
+                    }
+                    set {
+                        self [EnvironmentKeyString.self] = newValue
+                    }
+                }
+
+                private struct EnvironmentKeyString: EnvironmentKey {
+                    static let defaultValue = "defaultValue"
+                }
+                var optional: Bool? {
+                    get {
+                        self [EnvironmentKeyOptional.self]
+                    }
+                    set {
+                        self [EnvironmentKeyOptional.self] = newValue
+                    }
+                }
+
+                private struct EnvironmentKeyOptional: EnvironmentKey {
+                    static let defaultValue: Bool? = nil
+                }
+            }
             """#,
             macros: testMacros
         )
