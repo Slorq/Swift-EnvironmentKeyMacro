@@ -1,8 +1,15 @@
+//
+//  main.swift
+//
+//
+//  Created by Alejandro Maya on 31/05/24.
+//
+
 import EnvironmentKeyMacro
+import SwiftUI
 
-let a = 17
-let b = 25
-
-let (result, code) = #stringify(a + b)
-
-print("The value \(result) was produced by the code \"\(code)\"")
+@EnvironmentKeys
+extension EnvironmentValues {
+    var test = "defaultValue"
+    var optional: Bool?
+}
